@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.MusicTicker;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.sound.PlayBackgroundMusicEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -26,6 +27,8 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 
 @Mod(modid = Ambience.MOD_ID, name = Ambience.MOD_NAME, version = Ambience.VERSION, dependencies = Ambience.DEPENDENCIES)
 public class Ambience {
+	@Mod.Instance
+	public static Ambience INSTANCE;
 
 	public static final String MOD_ID = "Ambience";
 	public static final String MOD_NAME = MOD_ID;
@@ -44,6 +47,12 @@ public class Ambience {
 	int fadeOutTicks = FADE_DURATION;
 	int fadeInTicks = 0;
 	int silenceTicks = 0;
+
+	private File ambienceDir;
+
+	public void reloadSongConfig() {
+		SongLoader.loadFrom(ambienceDir);
+	}
 	
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -51,11 +60,11 @@ public class Ambience {
 		MinecraftForge.EVENT_BUS.register(this);
 		
 		File configDir = event.getSuggestedConfigurationFile().getParentFile();
-		File ambienceDir = new File(configDir.getParentFile(), "ambience_music");
+		ambienceDir = new File(configDir.getParentFile(), "ambience_music");
 		if(!ambienceDir.exists())
 			ambienceDir.mkdir();
 		
-		SongLoader.loadFrom(ambienceDir);
+		reloadSongConfig();
 		
 		if(SongLoader.enabled)
 			thread = new PlayerThread();
@@ -66,6 +75,8 @@ public class Ambience {
 		Minecraft mc = Minecraft.getMinecraft();
 		MusicTicker ticker = new NilMusicTicker(mc);
 		ReflectionHelper.setPrivateValue(Minecraft.class, mc, ticker, "mcMusicTicker", "field_147126_aw", "ax");
+
+		ClientCommandHandler.instance.registerCommand(new CommandReloadConfig());
 	}
 	
 	@SubscribeEvent
