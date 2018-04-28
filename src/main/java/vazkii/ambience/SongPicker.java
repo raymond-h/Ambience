@@ -1,8 +1,5 @@
 package vazkii.ambience;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
@@ -23,8 +20,12 @@ import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.BiomeDictionary;
-import net.minecraftforge.common.BiomeDictionary.Type;
 import net.minecraftforge.common.MinecraftForge;
+
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 public final class SongPicker {
 
@@ -60,174 +61,160 @@ public final class SongPicker {
 		primaryTagMap.clear();
 		secondaryTagMap.clear();
 	}
-	
+
 	public static String getSong() {
+		List<String> applicableEvents = getApplicableEvents();
+		String event = applicableEvents.get(0);
+
+		if(event.startsWith("biome:"))
+			return event.substring("biome:".length());
+
+		if(event.startsWith("biomeType:"))
+			return event.substring("biomeType:".length());
+
+		return getSongForEvent(event);
+	}
+
+	public static List<String> getApplicableEvents() {
+		List<String> resultEvents = new LinkedList<String>();
+
 		Minecraft mc = Minecraft.getMinecraft();
 		EntityPlayer player = mc.thePlayer;
 		World world = mc.theWorld;
 
-		if(player == null || world == null)
-			return getSongForEvent(EVENT_MAIN_MENU);
-		
+		if(player == null || world == null) {
+			resultEvents.add(EVENT_MAIN_MENU);
+			return resultEvents;
+		}
+
 		int x = MathHelper.floor_double(player.posX);
 		int y = MathHelper.floor_double(player.posY);
 		int z = MathHelper.floor_double(player.posZ);
-		
+
 		AmbienceEventEvent event = new AmbienceEventEvent.Pre(world, x, y, z);
 		MinecraftForge.EVENT_BUS.post(event);
-    	String eventr = getSongForEvent(event.event);
-    	if(eventr != null)
-    		return eventr;
-		
-        if(BossStatus.bossName != null && BossStatus.statusBarTime > 0) {
-        	String song = getSongForEvent(EVENT_BOSS);
-        	if(song != null)
-        		return song;
-        }
-        
-        float hp = player.getHealth();
-        if(hp < 7) {
-        	String song = getSongForEvent(EVENT_DYING);
-        	if(song != null)
-        		return song;
-        }
+		String eventr = event.event;
+		if(eventr != null && !eventr.equals(""))
+			resultEvents.add(eventr);
 
-	        int monsterCount = world.getEntitiesWithinAABB(EntityMob.class, AxisAlignedBB.getBoundingBox(player.posX - 16, player.posY - 8, player.posZ - 16, player.posX + 16, player.posY + 8, player.posZ + 16)).size();
-		if(monsterCount > 5) {
-        	String song = getSongForEvent(EVENT_HORDE);
-        	if(song != null)
-        		return song;
+		if(BossStatus.bossName != null && BossStatus.statusBarTime > 0) {
+			resultEvents.add(EVENT_BOSS);
 		}
-        
-        if(player.fishEntity != null) {
-        	String song = getSongForEvent(EVENT_FISHING);
-        	if(song != null)
-        		return song;
-        }
-        
-        ItemStack headItem = player.getEquipmentInSlot(4);
-        if(headItem != null && headItem.getItem() == Item.getItemFromBlock(Blocks.pumpkin)) {
-        	String song = getSongForEvent(EVENT_PUMPKIN_HEAD);
-        	if(song != null)
-        		return song;
-        }
-        	int indimension = world.provider.dimensionId;
+
+		float hp = player.getHealth();
+		if(hp < 7) {
+			resultEvents.add(EVENT_DYING);
+		}
+
+		int monsterCount = world.getEntitiesWithinAABB(EntityMob.class, AxisAlignedBB.getBoundingBox(player.posX - 16, player.posY - 8, player.posZ - 16, player.posX + 16, player.posY + 8, player.posZ + 16)).size();
+		if(monsterCount > 5) {
+			resultEvents.add(EVENT_HORDE);
+		}
+
+		if(player.fishEntity != null) {
+			resultEvents.add(EVENT_FISHING);
+		}
+
+		ItemStack headItem = player.getEquipmentInSlot(4);
+		if(headItem != null && headItem.getItem() == Item.getItemFromBlock(Blocks.pumpkin)) {
+			resultEvents.add(EVENT_PUMPKIN_HEAD);
+		}
+		int indimension = world.provider.dimensionId;
 
 		if(indimension == -1) {
-		String song = getSongForEvent(EVENT_IN_NETHER);
-	        	if(song != null)
-	        	return song;
+			resultEvents.add(EVENT_IN_NETHER);
 		} else if(indimension == 1) {
-			String song = getSongForEvent(EVENT_IN_END);
-	        	if(song != null)
-	        	return song;
+			resultEvents.add(EVENT_IN_END);
 		}
 
 		Entity riding = player.ridingEntity;
 		if(riding != null) {
 			if(riding instanceof EntityMinecart) {
-	        	String song = getSongForEvent(EVENT_MINECART);
-	        	if(song != null)
-	        		return song;
-	        } 
+				resultEvents.add(EVENT_MINECART);
+			}
 			if(riding instanceof EntityBoat) {
-	        	String song = getSongForEvent(EVENT_BOAT);
-	        	if(song != null)
-	        		return song;
-	        } 
+				resultEvents.add(EVENT_BOAT);
+			}
 			if(riding instanceof EntityHorse) {
-	        	String song = getSongForEvent(EVENT_HORSE);
-	        	if(song != null)
-	        		return song;
-	        } 
+				resultEvents.add(EVENT_HORSE);
+			}
 			if(riding instanceof EntityPig) {
-	        	String song = getSongForEvent(EVENT_PIG);
-	        	if(song != null)
-	        		return song;
-	        }
+				resultEvents.add(EVENT_PIG);
+			}
 		}
-		
+
 		if(player.isInsideOfMaterial(Material.water)) {
-        	String song = getSongForEvent(EVENT_UNDERWATER);
-        	if(song != null)
-        		return song;
+			resultEvents.add(EVENT_UNDERWATER);
 		}
-		
-		boolean underground = !world.canBlockSeeTheSky(x, y, z); 
+
+		boolean underground = !world.canBlockSeeTheSky(x, y, z);
 		if(underground) {
 			if(y < 20) {
-	        	String song = getSongForEvent(EVENT_DEEP_UNDEGROUND);
-	        	if(song != null)
-	        		return song;
-	        }
+				resultEvents.add(EVENT_DEEP_UNDEGROUND);
+			}
 			if(y < 55) {
-	        	String song = getSongForEvent(EVENT_UNDERGROUND);
-	        	if(song != null)
-	        		return song;
-	        }
-		}  
+				resultEvents.add(EVENT_UNDERGROUND);
+			}
+		}
 
 		if(world.isRaining()) {
-        	String song = getSongForEvent(EVENT_RAIN);
-        	if(song != null)
-        		return song;
+			resultEvents.add(EVENT_RAIN);
 		}
-		
+
 		if(y > 128) {
-        	String song = getSongForEvent(EVENT_HIGH_UP);
-        	if(song != null)
-        		return song;
-        }
-		
+			resultEvents.add(EVENT_HIGH_UP);
+		}
+
 		long time = world.getWorldTime() % 24000;
 		if(time > 13300 && time < 23200) {
-        	String song = getSongForEvent(EVENT_NIGHT);
-        	if(song != null)
-        		return song;
-        }
-		
-		int villagerCount = world.getEntitiesWithinAABB(EntityVillager.class, AxisAlignedBB.getBoundingBox(player.posX - 30, player.posY - 8, player.posZ - 30, player.posX + 30, player.posY + 8, player.posZ + 30)).size();
-		if(villagerCount > 3) {
-        	String song = getSongForEvent(EVENT_VILLAGE);
-        	if(song != null)
-        		return song;
+			resultEvents.add(EVENT_NIGHT);
 		}
 
+		int villagerCount = world.getEntitiesWithinAABB(EntityVillager.class, AxisAlignedBB.getBoundingBox(player.posX - 30, player.posY - 8, player.posZ - 30, player.posX + 30, player.posY + 8, player.posZ + 30)).size();
+		if(villagerCount > 3) {
+			resultEvents.add(EVENT_VILLAGE);
+		}
 
-		
 		event = new AmbienceEventEvent.Post(world, x, y, z);
 		MinecraftForge.EVENT_BUS.post(event);
-    	eventr = getSongForEvent(event.event);
-    	if(eventr != null)
-    		return eventr;
-		
-        if(world != null && world.blockExists(x, y, z)) {
-            Chunk chunk = world.getChunkFromBlockCoords(x, z);
-            BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(x & 15, z & 15, world.getWorldChunkManager());
-            if(biomeMap.containsKey(biome))
-            	return biomeMap.get(biome);
-            
-            BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
-            for(Type t : types)
-            	if(primaryTagMap.containsKey(t))
-            		return primaryTagMap.get(t);
-            for(Type t : types)
-            	if(secondaryTagMap.containsKey(t))
-            		return secondaryTagMap.get(t);
-        }
-        
-        return getSongForEvent(EVENT_GENERIC);
+		eventr = event.event;
+		if(eventr != null && !eventr.equals(""))
+			resultEvents.add(eventr);
+
+		String eventForBiome = getEventForBiome(world, x, y, z);
+		if(eventForBiome != null) {
+			resultEvents.add(eventForBiome);
+		}
+
+		resultEvents.add(EVENT_GENERIC);
+
+		return resultEvents;
 	}
-	
+
 	public static String getSongForEvent(String event) {
 		if(eventMap.containsKey(event))
 			return eventMap.get(event);
-		
+
 		return null;
 	}
-	
-	public static void getSongForBiome(World world, int x, int y, int z) {
-		
+
+	public static String getEventForBiome(World world, int x, int y, int z) {
+        if(world.blockExists(x, y, z)) {
+            Chunk chunk = world.getChunkFromBlockCoords(x, z);
+            BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(x & 15, z & 15, world.getWorldChunkManager());
+            if(biomeMap.containsKey(biome))
+                return "biome:" + biomeMap.get(biome);
+
+            BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
+            for(BiomeDictionary.Type t : types)
+                if(primaryTagMap.containsKey(t))
+                    return "biomeType:" + primaryTagMap.get(t);
+            for(BiomeDictionary.Type t : types)
+                if(secondaryTagMap.containsKey(t))
+                    return "biomeType:" + secondaryTagMap.get(t);
+        }
+
+		return null;
 	}
 	
 	public static String getSongName(String song) {
