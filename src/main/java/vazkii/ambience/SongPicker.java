@@ -88,11 +88,11 @@ public final class SongPicker {
 	}
 
 	public static void putBiome(@Nonnull BiomeGenBase biome, @Nonnull String song) {
-		SongPicker.addMultiEventEntry(Lists.newArrayList("biome:" + biome.biomeName), song, 2000);
+		SongPicker.addMultiEventEntry(Lists.newArrayList("biome+" + biome.biomeName.replaceAll(" ", "+")), song, 2000);
 	}
 
 	public static void putBiomeType(@Nonnull BiomeDictionary.Type type, boolean primary, @Nonnull String song) {
-		SongPicker.addMultiEventEntry(Lists.newArrayList("biomeType:" + type.name().toLowerCase()), song, primary ? 3000 : 4000);
+		SongPicker.addMultiEventEntry(Lists.newArrayList("biomeType+" + type.name().toLowerCase()), song, primary ? 3000 : 4000);
 	}
 
 	public static class MultiEventEntry implements Comparable<MultiEventEntry> {
@@ -175,8 +175,8 @@ public final class SongPicker {
 	}
 
 	public static List<String> getApplicableEvents() {
-		assert matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome:Plains", "biomeType:plains", "highUp", "village", "night"));
-		assert !matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome:Plains", "biomeType:plains", "highUp", "night"));
+		assert matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome+Plains", "biomeType+plains", "highUp", "village", "night"));
+		assert !matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome+Plains", "biomeType+plains", "highUp", "night"));
 
 		List<String> resultEvents = new LinkedList<String>();
 
@@ -297,11 +297,11 @@ public final class SongPicker {
         if(world.blockExists(x, y, z)) {
             Chunk chunk = world.getChunkFromBlockCoords(x, z);
             BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(x & 15, z & 15, world.getWorldChunkManager());
-            resultEvents.add("biome:" + biome.biomeName);
+            resultEvents.add("biome+" + biome.biomeName.replaceAll(" ", "+"));
 
             BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
             for(BiomeDictionary.Type t : types) {
-	            resultEvents.add("biomeType:" + t.name().toLowerCase());
+	            resultEvents.add("biomeType+" + t.name().toLowerCase());
             }
         }
 
