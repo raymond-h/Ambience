@@ -1,5 +1,7 @@
 package vazkii.ambience;
 
+import com.google.common.collect.ImmutableList;
+
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.BiomeDictionary;
 
@@ -13,6 +15,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
@@ -63,6 +66,10 @@ public final class SongLoader {
 						if(type != null) {
 							SongPicker.putBiomeType(type, primary, props.getProperty(s));
 						}
+					} else if(keyType.equals("multi")) {
+						int priority = Integer.parseInt(tokens[1], 10);
+						List<String> events = ImmutableList.copyOf(tokens[2].split("\\|"));
+						SongPicker.addMultiEventEntry(events, props.getProperty(s), priority);
 					}
 				}
 			}

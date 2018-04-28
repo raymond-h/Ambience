@@ -1,6 +1,7 @@
 package vazkii.ambience;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -29,6 +30,7 @@ import net.minecraftforge.common.MinecraftForge;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -56,8 +58,33 @@ public final class SongPicker {
 	public static final String EVENT_PUMPKIN_HEAD = "pumpkinHead";
 	public static final String EVENT_GENERIC = "generic";
 
+	private static final Map<String, Integer> eventPriorityMap;
+	static {
+		eventPriorityMap = Maps.newHashMap();
+		eventPriorityMap.put(EVENT_MAIN_MENU, 500);
+		eventPriorityMap.put(EVENT_BOSS, 501);
+		eventPriorityMap.put(EVENT_DYING, 502);
+		eventPriorityMap.put(EVENT_HORDE, 503);
+		eventPriorityMap.put(EVENT_FISHING, 504);
+		eventPriorityMap.put(EVENT_PUMPKIN_HEAD, 505);
+		eventPriorityMap.put(EVENT_IN_NETHER, 506);
+		eventPriorityMap.put(EVENT_IN_END, 507);
+		eventPriorityMap.put(EVENT_MINECART, 508);
+		eventPriorityMap.put(EVENT_BOAT, 509);
+		eventPriorityMap.put(EVENT_HORSE, 510);
+		eventPriorityMap.put(EVENT_PIG, 511);
+		eventPriorityMap.put(EVENT_UNDERWATER, 512);
+		eventPriorityMap.put(EVENT_DEEP_UNDEGROUND, 513);
+		eventPriorityMap.put(EVENT_UNDERGROUND, 514);
+		eventPriorityMap.put(EVENT_RAIN, 515);
+		eventPriorityMap.put(EVENT_HIGH_UP, 516);
+		eventPriorityMap.put(EVENT_NIGHT, 517);
+		eventPriorityMap.put(EVENT_VILLAGE, 518);
+		eventPriorityMap.put(EVENT_GENERIC, 10000);
+	}
+
 	public static void putEvent(@Nonnull String event, @Nonnull String song) {
-		addMultiEventEntry(Lists.newArrayList(event), song, event.equals("generic") ? 10000 : 1000);
+		addMultiEventEntry(Lists.newArrayList(event), song, eventPriorityMap.containsKey(event) ? eventPriorityMap.get(event) : 1000);
 	}
 
 	public static void putBiome(@Nonnull BiomeGenBase biome, @Nonnull String song) {
@@ -101,7 +128,7 @@ public final class SongPicker {
 
 	private static final List<MultiEventEntry> multiEventList = new LinkedList<MultiEventEntry>();
 
-	private static void addMultiEventEntry(
+	public static void addMultiEventEntry(
 		@Nonnull
 			List<String> eventMatcher,
 		@Nonnull
