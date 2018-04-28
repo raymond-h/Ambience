@@ -1,5 +1,10 @@
 package vazkii.ambience;
 
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraftforge.common.BiomeDictionary;
+
+import org.apache.logging.log4j.Level;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,11 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.Set;
-
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraftforge.common.BiomeDictionary;
-
-import org.apache.logging.log4j.Level;
 
 import cpw.mods.fml.common.FMLLog;
 
@@ -47,22 +47,21 @@ public final class SongLoader {
 					if(keyType.equals("event")) {
 						String event = tokens[1];
 						
-						SongPicker.eventMap.put(event, props.getProperty(s));
+						SongPicker.putEvent(event, props.getProperty(s));
 					} else if(keyType.equals("biome")) {
 						String biomeName = joinTokensExceptFirst(tokens).replaceAll("\\+", " ");
 						BiomeGenBase biome = BiomeMapper.getBiome(biomeName);
 						
-						if(biome != null)
-							SongPicker.biomeMap.put(biome, props.getProperty(s));
+						if(biome != null) {
+							SongPicker.putBiome(biome, props.getProperty(s));
+						}
 					} else if(keyType.matches("primarytag|secondarytag")) {
 						boolean primary = keyType.equals("primarytag");
 						String tagName = tokens[1].toUpperCase();
 						BiomeDictionary.Type type = BiomeMapper.getBiomeType(tagName);
 						
 						if(type != null) {
-							if(primary)
-								SongPicker.primaryTagMap.put(type, props.getProperty(s));
-							else SongPicker.secondaryTagMap.put(type, props.getProperty(s));
+							SongPicker.putBiomeType(type, primary, props.getProperty(s));
 						}
 					}
 				}
@@ -70,7 +69,8 @@ public final class SongLoader {
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
-		
+
+		FMLLog.log(Level.INFO, "%s", SongPicker.getMultiEventJson());
 		File musicDir = new File(f, "music");
 		if(!musicDir.exists())
 			musicDir.mkdir();

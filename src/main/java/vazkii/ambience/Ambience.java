@@ -1,6 +1,7 @@
 package vazkii.ambience;
 
-import java.io.File;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.MusicTicker;
@@ -8,6 +9,11 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.sound.PlayBackgroundMusicEvent;
 import net.minecraftforge.common.MinecraftForge;
+
+import java.io.File;
+
+import javax.annotation.Nonnull;
+
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
@@ -117,6 +123,19 @@ public class Ambience {
 			String name = "Next Song: " + SongPicker.getSongName(nextSong);
 			event.right.add(name);
 		}
+		event.right.add("Ambience events:");
+		event.right.addAll(
+			Lists.transform(
+				SongPicker.getApplicableEvents(),
+				new Function<String, String>() {
+					@Nonnull
+					@Override
+					public String apply(String event) {
+						return "- " + event;
+					}
+				}
+			)
+		);
 	}
 	
 	@SubscribeEvent

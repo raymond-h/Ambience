@@ -1,5 +1,9 @@
 package vazkii.ambience;
 
+import com.google.common.collect.Lists;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
@@ -22,10 +26,12 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.MinecraftForge;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public final class SongPicker {
 
@@ -49,33 +55,102 @@ public final class SongPicker {
 	public static final String EVENT_DYING = "dying";
 	public static final String EVENT_PUMPKIN_HEAD = "pumpkinHead";
 	public static final String EVENT_GENERIC = "generic";
-	
-	public static final Map<String, String> eventMap = new HashMap();
-	public static final Map<BiomeGenBase, String> biomeMap = new HashMap();
-	public static final Map<BiomeDictionary.Type, String> primaryTagMap = new HashMap();
-	public static final Map<BiomeDictionary.Type, String> secondaryTagMap = new HashMap();
+
+	public static void putEvent(@Nonnull String event, @Nonnull String song) {
+		addMultiEventEntry(Lists.newArrayList(event), song, event.equals("generic") ? 10000 : 1000);
+	}
+
+	public static void putBiome(@Nonnull BiomeGenBase biome, @Nonnull String song) {
+		SongPicker.addMultiEventEntry(Lists.newArrayList("biome:" + biome.biomeName), song, 2000);
+	}
+
+	public static void putBiomeType(@Nonnull BiomeDictionary.Type type, boolean primary, @Nonnull String song) {
+		SongPicker.addMultiEventEntry(Lists.newArrayList("biomeType:" + type.name().toLowerCase()), song, primary ? 3000 : 4000);
+	}
+
+	public static class MultiEventEntry implements Comparable<MultiEventEntry> {
+		private List<String> eventMatcher;
+		private String song;
+		private int priority;
+
+		private MultiEventEntry(@Nonnull List<String> eventMatcher, @Nonnull String song, int priority) {
+			this.eventMatcher = eventMatcher;
+			this.song = song;
+			this.priority = priority;
+		}
+
+		@Nonnull
+		public List<String> getEventMatcher() {
+			return eventMatcher;
+		}
+
+		@Nonnull
+		public String getSong() {
+			return song;
+		}
+
+		public int getPriority() {
+			return priority;
+		}
+
+		@Override
+		public int compareTo(@Nonnull MultiEventEntry o) {
+			return priority - o.priority;
+		}
+	}
+
+	private static final List<MultiEventEntry> multiEventList = new LinkedList<MultiEventEntry>();
+
+	private static void addMultiEventEntry(
+		@Nonnull
+			List<String> eventMatcher,
+		@Nonnull
+			String song, int priority) {
+
+		multiEventList.add(new MultiEventEntry(eventMatcher, song, priority));
+		Collections.sort(multiEventList);
+	}
+
+	@Nonnull
+	public static String getMultiEventJson() {
+		Gson gson = new GsonBuilder().create();
+		return gson.toJson(multiEventList);
+	}
+
+	public static boolean matches(List<String> eventList, List<String> againstList) {
+		for(String event : eventList) {
+			if(!againstList.contains(event)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	@Nullable
+	public static String getSongMatching(@Nonnull List<String> eventList) {
+		for(MultiEventEntry entry : multiEventList) {
+			if(matches(entry.eventMatcher, eventList)) {
+				return entry.song;
+			}
+		}
+
+		return null;
+	}
 	
 	public static void reset() {
-		eventMap.clear();
-		biomeMap.clear();
-		primaryTagMap.clear();
-		secondaryTagMap.clear();
+		multiEventList.clear();
 	}
 
 	public static String getSong() {
 		List<String> applicableEvents = getApplicableEvents();
-		String event = applicableEvents.get(0);
-
-		if(event.startsWith("biome:"))
-			return event.substring("biome:".length());
-
-		if(event.startsWith("biomeType:"))
-			return event.substring("biomeType:".length());
-
-		return getSongForEvent(event);
+		return getSongMatching(applicableEvents);
 	}
 
 	public static List<String> getApplicableEvents() {
+		assert matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome:Plains", "biomeType:plains", "highUp", "village", "night"));
+		assert !matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome:Plains", "biomeType:plains", "highUp", "night"));
+
 		List<String> resultEvents = new LinkedList<String>();
 
 		Minecraft mc = Minecraft.getMinecraft();
@@ -181,40 +256,29 @@ public final class SongPicker {
 		if(eventr != null && !eventr.equals(""))
 			resultEvents.add(eventr);
 
-		String eventForBiome = getEventForBiome(world, x, y, z);
-		if(eventForBiome != null) {
-			resultEvents.add(eventForBiome);
-		}
+		List<String> eventsForBiome = getEventsForBiome(world, x, y, z);
+		resultEvents.addAll(eventsForBiome);
 
 		resultEvents.add(EVENT_GENERIC);
 
 		return resultEvents;
 	}
 
-	public static String getSongForEvent(String event) {
-		if(eventMap.containsKey(event))
-			return eventMap.get(event);
+	public static List<String> getEventsForBiome(World world, int x, int y, int z) {
+		List<String> resultEvents = new LinkedList<String>();
 
-		return null;
-	}
-
-	public static String getEventForBiome(World world, int x, int y, int z) {
         if(world.blockExists(x, y, z)) {
             Chunk chunk = world.getChunkFromBlockCoords(x, z);
             BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(x & 15, z & 15, world.getWorldChunkManager());
-            if(biomeMap.containsKey(biome))
-                return "biome:" + biomeMap.get(biome);
+            resultEvents.add("biome:" + biome.biomeName);
 
             BiomeDictionary.Type[] types = BiomeDictionary.getTypesForBiome(biome);
-            for(BiomeDictionary.Type t : types)
-                if(primaryTagMap.containsKey(t))
-                    return "biomeType:" + primaryTagMap.get(t);
-            for(BiomeDictionary.Type t : types)
-                if(secondaryTagMap.containsKey(t))
-                    return "biomeType:" + secondaryTagMap.get(t);
+            for(BiomeDictionary.Type t : types) {
+	            resultEvents.add("biomeType:" + t.name().toLowerCase());
+            }
         }
 
-		return null;
+		return resultEvents;
 	}
 	
 	public static String getSongName(String song) {
