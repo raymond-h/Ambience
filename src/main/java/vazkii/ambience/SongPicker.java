@@ -1,7 +1,7 @@
 package vazkii.ambience;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -27,10 +27,13 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.BiomeDictionary;
 import net.minecraftforge.common.MinecraftForge;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -84,30 +87,31 @@ public final class SongPicker {
 	}
 
 	public static void putEvent(@Nonnull String event, @Nonnull String song) {
-		addMultiEventEntry(Lists.newArrayList(event), song, eventPriorityMap.containsKey(event) ? eventPriorityMap.get(event) : 1000);
+		addMultiEventEntry(Sets.newHashSet(event), song, eventPriorityMap.containsKey(event) ? eventPriorityMap.get(event) : 1000);
 	}
 
 	public static void putBiome(@Nonnull BiomeGenBase biome, @Nonnull String song) {
-		SongPicker.addMultiEventEntry(Lists.newArrayList("biome+" + biome.biomeName.replaceAll(" ", "+")), song, 2000);
+		SongPicker.addMultiEventEntry(Sets.newHashSet("biome+" + biome.biomeName.replaceAll(" ", "+")), song, 2000);
 	}
 
 	public static void putBiomeType(@Nonnull BiomeDictionary.Type type, boolean primary, @Nonnull String song) {
-		SongPicker.addMultiEventEntry(Lists.newArrayList("biomeType+" + type.name().toLowerCase()), song, primary ? 3000 : 4000);
+		SongPicker.addMultiEventEntry(Sets.newHashSet("biomeType+" + type.name().toLowerCase()), song, primary ? 3000 : 4000);
 	}
 
 	public static class MultiEventEntry implements Comparable<MultiEventEntry> {
-		private List<String> eventMatcher;
+		private Set<String> eventMatcher;
 		private String song;
 		private int priority;
 
-		private MultiEventEntry(@Nonnull List<String> eventMatcher, @Nonnull String song, int priority) {
+		private MultiEventEntry(@Nonnull
+			Set<String> eventMatcher, @Nonnull String song, int priority) {
 			this.eventMatcher = eventMatcher;
 			this.song = song;
 			this.priority = priority;
 		}
 
 		@Nonnull
-		public List<String> getEventMatcher() {
+		public Set<String> getEventMatcher() {
 			return eventMatcher;
 		}
 
@@ -130,11 +134,11 @@ public final class SongPicker {
 
 	public static void addMultiEventEntry(
 		@Nonnull
-			List<String> eventMatcher,
+			Collection<String> eventMatcher,
 		@Nonnull
 			String song, int priority) {
 
-		multiEventList.add(new MultiEventEntry(eventMatcher, song, priority));
+		multiEventList.add(new MultiEventEntry(new HashSet<String>(eventMatcher), song, priority));
 		Collections.sort(multiEventList);
 	}
 
@@ -144,18 +148,13 @@ public final class SongPicker {
 		return gson.toJson(multiEventList);
 	}
 
-	public static boolean matches(List<String> eventList, List<String> againstList) {
-		for(String event : eventList) {
-			if(!againstList.contains(event)) {
-				return false;
-			}
-		}
-
-		return true;
+	public static boolean matches(Set<String> matcherSet, Set<String> currentSet) {
+		return currentSet.containsAll(matcherSet);
 	}
 
 	@Nullable
-	public static String getSongMatching(@Nonnull List<String> eventList) {
+	public static String getSongMatching(@Nonnull
+		Set<String> eventList) {
 		for(MultiEventEntry entry : multiEventList) {
 			if(matches(entry.eventMatcher, eventList)) {
 				return entry.song;
@@ -170,16 +169,20 @@ public final class SongPicker {
 	}
 
 	public static String getSong() {
-		List<String> applicableEvents = getApplicableEvents();
+		Set<String> applicableEvents = getApplicableEvents();
 		return getSongMatching(applicableEvents);
 	}
 
-	public static List<String> getApplicableEvents() {
-		assert matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome+Plains", "biomeType+plains", "highUp", "village", "night"));
-		assert !matches(Lists.newArrayList("highUp", "village"), Lists.newArrayList("biome+Plains", "biomeType+plains", "highUp", "night"));
+	private static final Set<String> EVENTS_CACHE = new HashSet<String>();
 
-		List<String> resultEvents = new LinkedList<String>();
+	public static Set<String> getApplicableEvents() {
+		EVENTS_CACHE.clear();
+		return getApplicableEvents(EVENTS_CACHE);
+	}
 
+	private static Set<String> getApplicableEvents(
+		@SuppressWarnings("SameParameterValue")
+			Set<String> resultEvents) {
 		Minecraft mc = Minecraft.getMinecraft();
 		EntityPlayer player = mc.thePlayer;
 		World world = mc.theWorld;
@@ -283,18 +286,15 @@ public final class SongPicker {
 		if(eventr != null && !eventr.equals(""))
 			resultEvents.add(eventr);
 
-		List<String> eventsForBiome = getEventsForBiome(world, x, y, z);
-		resultEvents.addAll(eventsForBiome);
+		getEventsForBiome(world, x, y, z, resultEvents);
 
 		resultEvents.add(EVENT_GENERIC);
 
 		return resultEvents;
 	}
 
-	public static List<String> getEventsForBiome(World world, int x, int y, int z) {
-		List<String> resultEvents = new LinkedList<String>();
-
-        if(world.blockExists(x, y, z)) {
+	public static void getEventsForBiome(World world, int x, int y, int z, Set<String> resultEvents) {
+		if(world.blockExists(x, y, z)) {
             Chunk chunk = world.getChunkFromBlockCoords(x, z);
             BiomeGenBase biome = chunk.getBiomeGenForWorldCoords(x & 15, z & 15, world.getWorldChunkManager());
             resultEvents.add("biome+" + biome.biomeName.replaceAll(" ", "+"));
@@ -305,7 +305,6 @@ public final class SongPicker {
             }
         }
 
-		return resultEvents;
 	}
 	
 	public static String getSongName(String song) {
